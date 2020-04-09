@@ -1,0 +1,5 @@
+__pycache__/
+data/mnist.zip
+requirements.txt
+data/mnist/data/test/all_data_0_niid_0_keep_10_test_9.json
+data/mnist/data/train/all_data_0_niid_0_keep_10_train_9.json
