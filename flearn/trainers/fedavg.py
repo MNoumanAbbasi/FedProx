@@ -5,7 +5,6 @@ import tensorflow as tf
 from .fedbase import BaseFedarated
 from flearn.utils.tf_utils import process_grad
 
-
 class Server(BaseFedarated):
     def __init__(self, params, learner, dataset):
         print('Using Federated avg to Train')
@@ -28,11 +27,10 @@ class Server(BaseFedarated):
 
             indices, selected_clients = self.select_clients(i, num_clients=self.clients_per_round)  # uniform sampling
             np.random.seed(i)
-            active_clients = np.random.choice(selected_clients, round(self.clients_per_round * (1-self.drop_percent)), replace=False)
-
+            # active_clients = np.random.choice(selected_clients, round(self.clients_per_round * (1-self.drop_percent)), replace=False)
             csolns = []  # buffer for receiving client solutions
 
-            for idx, c in enumerate(active_clients.tolist()):  # simply drop the slow devices
+            for idx, c in enumerate(selected_clients):  # simply drop the slow devices
                 # communicate the latest model
                 c.set_params(self.latest_model)
 

@@ -11,10 +11,12 @@ class Model(object):
     Assumes that images are 28px by 28px
     '''
     
-    def __init__(self, num_classes, optimizer, seed=1):
+    def __init__(self, num_classes, optimizer, seed=1, device_type="high"):
 
         # params
         self.num_classes = num_classes
+        self.device_type = device_type  # device types: "high" or "low"
+        # self.num_features = 60
 
         # create computation graph        
         self.graph = tf.Graph()
@@ -34,7 +36,13 @@ class Model(object):
     
     def create_model(self, optimizer):
         """Model function for Logistic Regression."""
-        features = tf.placeholder(tf.float32, shape=[None, 60], name='features')
+        num_features = 60
+        if self.device_type == "high":
+            num_features = 60
+        elif self.device_type == "low":
+            num_features = 60 / 2
+
+        features = tf.placeholder(tf.float32, shape=[None, num_features], name='features')
         labels = tf.placeholder(tf.int64, shape=[None,], name='labels')
         logits = tf.layers.dense(inputs=features, units=self.num_classes, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))
         predictions = {
@@ -99,7 +107,15 @@ class Model(object):
         Args:
             data: dict of the form {'x': [list], 'y': [list]}
         '''
+        # Change data shape based on device type
+        newDataX = []
+        if self.device_type == "low":
+            for dataX in data['x']:
+                newDataX.append(dataX[:30])
+            data['x'] = newDataX
+        # print(len(data['x']), len(data['y']))
         with self.graph.as_default():
+            # print("********************", data['x'], len(data['y']))
             tot_correct, loss, pred = self.sess.run([self.eval_metric_ops, self.loss, self.pred], 
                 feed_dict={self.features: data['x'], self.labels: data['y']})
         return tot_correct, loss

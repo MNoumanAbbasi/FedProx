@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
+import random
 
 from flearn.models.client import Client
 from flearn.utils.model_utils import Metrics
@@ -9,11 +10,18 @@ from flearn.utils.tf_utils import process_grad
 class BaseFedarated(object):
     def __init__(self, params, learner, dataset):
         # transfer parameters to self
-        for key, val in params.items(): setattr(self, key, val);
+        for key, val in params.items(): setattr(self, key, val)
 
         # create worker nodes
         tf.reset_default_graph()
-        self.client_model = learner(*params['model_params'], self.inner_opt, self.seed)
+
+        # Based on the drop percentage, some devices will get a smaller version
+        # of the model to train.
+        random.seed(123)
+        if random.uniform(0, 1) < self.drop_percent:
+            self.client_model = learner(*params['model_params'], self.inner_opt, self.seed, device_type="low")
+        else:
+            self.client_model = learner(*params['model_params'], self.inner_opt, self.seed, device_type="high")
         self.clients = self.setup_clients(dataset, self.client_model)
         print('{} Clients in Total'.format(len(self.clients)))
         self.latest_model = self.client_model.get_params()
