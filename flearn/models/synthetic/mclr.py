@@ -11,10 +11,13 @@ class Model(object):
     Assumes that images are 28px by 28px
     '''
     
-    def __init__(self, num_classes, optimizer, seed=1):
+    def __init__(self, num_classes, optimizer, seed=1, device_type="high"):
 
         # params
         self.num_classes = num_classes
+        # device types: "high" or "low"
+        self.device_type = device_type  
+        self.num_features = 60
 
         # create computation graph        
         self.graph = tf.Graph()
@@ -34,7 +37,18 @@ class Model(object):
     
     def create_model(self, optimizer):
         """Model function for Logistic Regression."""
-        features = tf.placeholder(tf.float32, shape=[None, 60], name='features')
+        num_features = self.num_features
+        if self.device_type == "high":
+            num_features = self.num_features
+        elif self.device_type == "low":
+            num_features = self.num_features / 2
+            self.num_features = self.num_features / 2
+
+        if self.device_type == "high":
+            features = tf.placeholder(tf.float64, shape=[None, num_features], name='features')
+        elif self.device_type == "low":
+            features = tf.placeholder(tf.float32, shape=[None, num_features], name='features')
+
         labels = tf.placeholder(tf.int64, shape=[None,], name='labels')
         logits = tf.layers.dense(inputs=features, units=self.num_classes, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.001))
         predictions = {
@@ -65,7 +79,6 @@ class Model(object):
 
         grads = np.zeros(model_len)
         num_samples = len(data['y'])
-
         with self.graph.as_default():
             model_grads = self.sess.run(self.grads,
                 feed_dict={self.features: data['x'], self.labels: data['y']})
@@ -75,7 +88,7 @@ class Model(object):
     
     def solve_inner(self, data, num_epochs=1, batch_size=32):
         '''Solves local optimization problem'''
-
+        data['x'] = np.array(data['x'])
         for _ in range(num_epochs):
             for X, y in batch_data(data, batch_size):
                 with self.graph.as_default():
@@ -86,7 +99,7 @@ class Model(object):
 
     def solve_iters(self, data, num_iters=1, batch_size=32):
         '''Solves local optimization problem'''
-
+        data['x'] = np.array(data['x'])
         for X, y in batch_data_multiple_iters(data, batch_size, num_iters):
             with self.graph.as_default():
                 self.sess.run(self.train_op, feed_dict={self.features: X, self.labels: y})

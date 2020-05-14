@@ -50,10 +50,10 @@ def read_options():
                         help='evaluate every ____ rounds;',
                         type=int,
                         default=-1)
-    parser.add_argument('--clients_per_round',
-                        help='number of clients trained per round;',
-                        type=int,
-                        default=-1)
+    # parser.add_argument('--clients_per_round',
+    #                     help='number of clients trained per round;',
+    #                     type=int,
+    #                     default=-1)
     parser.add_argument('--batch_size',
                         help='batch size when clients train on data;',
                         type=int,
@@ -132,6 +132,7 @@ def main():
 
     # call appropriate trainer
     t = optimizer(options, learner, dataset)
+    print('optionss', options)
     t.train()
     
 if __name__ == '__main__':

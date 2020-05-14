@@ -2,7 +2,7 @@ import numpy as np
 
 class Client(object):
     
-    def __init__(self, id, group=None, train_data={'x':[],'y':[]}, eval_data={'x':[],'y':[]}, model=None):
+    def __init__(self, id, group=None, train_data={'x':[],'y':[]}, eval_data={'x':[],'y':[]}, model=None, start=0):
         self.model = model
         self.id = id # integer
         self.group = group
@@ -10,6 +10,7 @@ class Client(object):
         self.eval_data = {k: np.array(v) for k, v in eval_data.items()}
         self.num_samples = len(self.train_data['y'])
         self.test_samples = len(self.eval_data['y'])
+        self.start = start
 
     def set_params(self, model_params):
         '''set model parameters'''
@@ -41,7 +42,6 @@ class Client(object):
             2: comp: number of FLOPs executed in training process
             2: bytes_write: number of bytes transmitted
         '''
-
         bytes_w = self.model.size
         soln, comp = self.model.solve_inner(self.train_data, num_epochs, batch_size)
         bytes_r = self.model.size

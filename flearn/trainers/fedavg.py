@@ -5,7 +5,6 @@ import tensorflow as tf
 from .fedbase import BaseFedarated
 from flearn.utils.tf_utils import process_grad
 
-
 class Server(BaseFedarated):
     def __init__(self, params, learner, dataset):
         print('Using Federated avg to Train')
@@ -14,7 +13,7 @@ class Server(BaseFedarated):
 
     def train(self):
         '''Train using Federated Proximal'''
-        print('Training with {} workers ---'.format(self.clients_per_round))
+        print('Training with {} workers ---'.format(self.original_params['batch_size']))
 
         for i in range(self.num_rounds):
             # test model
@@ -26,27 +25,52 @@ class Server(BaseFedarated):
                 tqdm.write('At round {} training accuracy: {}'.format(i, np.sum(stats_train[3]) * 1.0 / np.sum(stats_train[2])))
                 tqdm.write('At round {} training loss: {}'.format(i, np.dot(stats_train[4], stats_train[2]) * 1.0 / np.sum(stats_train[2])))
 
-            indices, selected_clients = self.select_clients(i, num_clients=self.clients_per_round)  # uniform sampling
+            indices_high, selected_clients_high, indices_low, selected_clients_low = self.select_clients(i)  # uniform sampling
             np.random.seed(i)
-            active_clients = np.random.choice(selected_clients, round(self.clients_per_round * (1-self.drop_percent)), replace=False)
+            csolns_high = []  # buffer for receiving client solutions
+            csolns_low = []
 
-            csolns = []  # buffer for receiving client solutions
-
-            for idx, c in enumerate(active_clients.tolist()):  # simply drop the slow devices
+            for idx, c in enumerate(selected_clients_high): 
                 # communicate the latest model
-                c.set_params(self.latest_model)
+                c.set_params(self.latest_model_high)
 
                 # solve minimization locally
                 soln, stats = c.solve_inner(num_epochs=self.num_epochs, batch_size=self.batch_size)
 
                 # gather solutions from client
-                csolns.append(soln)
+                csolns_high.append(soln)
 
                 # track communication cost
                 self.metrics.update(rnd=i, cid=c.id, stats=stats)
 
-            # update models
-            self.latest_model = self.aggregate(csolns)
+            for idx, c in enumerate(selected_clients_low):
+                # communicate the latest model
+                c.set_params((self.latest_model_high[0][c.start :c.start +int( self.original_params['num_features']/2),:], self.latest_model_high[1]))
+
+                # solve minimization locally
+                soln, stats = c.solve_inner(num_epochs=self.num_epochs, batch_size=self.batch_size)
+                t = []
+                for i in range(0, len(csolns_high)):
+                    t.append(csolns_high[i][1][0])
+                t = np.mean(t, axis=0)
+                t[c.start:c.start+int(self.original_params['num_features']/2)] = soln[1][0]
+                soln[1][0] = t
+
+                # gather solutions from client
+                csolns_low.append(soln)
+
+                # track communication cost
+                self.metrics.update(rnd=i, cid=c.id, stats=stats)
+
+            temp = []
+            for i in range(0,(len(selected_clients_high) + len(selected_clients_low))):
+                if i < len(selected_clients_high):
+                    temp.append(csolns_high[i])
+                else:
+                    temp.append(csolns_low[i-len(selected_clients_high)])
+
+            temp = np.asarray(temp)
+            self.latest_model_high = self.aggregate(temp)
 
         # final test model
         stats = self.test()
