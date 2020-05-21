@@ -109,3 +109,6 @@ class Server(BaseFedarated):
 
         print('Timings:\n High device avg:', np.mean(time_log_high))
         print('Timings:\n Low device avg:', np.mean(time_log_low))
+        tqdm.write(' '.join(str(round(e,4)) for e in time_log_high))
+        tqdm.write('\n')
+        tqdm.write(' '.join(str(round(e,4)) for e in time_log_low))
